@@ -7,5 +7,5 @@
 ### Description of App
 This is a calculator that can help you determine the monthly payment amount of a mortgage loan based on the loan amount, chosen term and interest rate.
 
-App URL : https://missndlovu.shinyapps.io/mortgagecalc/
-Pitch URL : http://rpubs.com/misstee_01/MortgageCalc
+- App URL : https://missndlovu.shinyapps.io/mortgagecalc/
+- Pitch URL : http://rpubs.com/misstee_01/MortgageCalc
