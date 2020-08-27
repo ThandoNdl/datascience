@@ -337,6 +337,12 @@ plot(c50Imp, top = 20)</code></pre>
 </div>
 <div id="model-application" class="section level3">
 <h3>Model Application</h3>
+<div id="out-of-sample-error-prediction" class="section level4">
+<h4>Out of Sample Error Prediction</h4>
+<p>We expect the out of sample error rate to be higher than the error we got when we trained the model which was 0.003% and closer to the validation set which was 0.004% * See from the Results and Model Evaluation sections.</p>
+</div>
+<div id="predict-on-new-data" class="section level4">
+<h4>Predict on New Data</h4>
 <p>Below we are going to apply the selected model to new data (test data). We will first have to apply the same transformations we applied to the training data.</p>
 <pre class="r"><code>pml_testing$new_windowno &lt;- ifelse(pml_testing$new_window==&quot;no&quot;, 1, 0)
 pml_testing$new_window = NULL
@@ -350,6 +356,7 @@ head(cbind(pml_testing[, (names(pml_testing) %in% cols)], predictions))</code></
 ## 4 4    adelmo 02/12/2011 13:33           A
 ## 5 5    eurico 28/11/2011 14:13           A
 ## 6 6    jeremy 30/11/2011 17:12           E</code></pre>
+</div>
 </div>
 </div>
 

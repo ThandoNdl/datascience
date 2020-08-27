@@ -212,6 +212,13 @@ plot(c50Imp, top = 20)
 
 ### Model Application
 
+#### Out of Sample Error Prediction
+
+We expect the out of sample error rate to be higher than the error we got when we trained the model which was 0.003% and closer to the validation set which was 0.004%
+* See from the Results and Model Evaluation sections.
+
+#### Predict on New Data
+
 Below we are going to apply the selected model to new data (test data). We will first have to apply the same transformations we applied to the training data.
 
 ```{r pred_test}
