@@ -1,0 +1,221 @@
+---
+title: "Practical Machine Learning"
+author: "tndl"
+date: "09 August 2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, cache = TRUE)
+```
+
+```{r pckgs, include=FALSE}
+ipak <- function(pkg){
+  new.pkg <- pkg[!(pkg %in% installed.packages()[, "Package"])]
+  if (length(new.pkg)) 
+    install.packages(new.pkg, dependencies = TRUE)
+  sapply(pkg, require, character.only = TRUE)
+}
+# usage
+packages <- c("dplyr", "corrplot", "caret", "rpart", "rattle", "tidyr", "dummies", "ggplot2", "ggcorrplot", "mice", "VIM", "caretEnsemble", "randomForest")
+ipak(packages)
+```
+
+## Introduction
+
+One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it. In this project, your goal will be to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants.
+* Culled from Coursera course on Practical Machine Learning
+
+## Data Preparation
+
+We have been provided with data that we split into training and testing.
+
+```{r import, message=FALSE, warning=FALSE, echo=TRUE}
+#Read in datasets
+setwd("~/Coursera/Course 8")
+pml_training = read.csv("pml-training.csv", na.strings = c("NA", " ", ""))
+pml_testing = read.csv("pml-testing.csv", na.strings = c("NA", " ", ""))
+target_var = "classe"
+```
+
+Our variable of interest is "classe".
+
+### Dataframe Exploration
+
+The below will show the categories of how well training ws as well as the proportions in our test data.
+
+```{r info_a, echo=FALSE}
+# Frequency and proportion of target variable
+freq = table(pml_training[, target_var]); freq
+prop.table(freq)
+```
+
+```{r info_b, include=FALSE}
+str(pml_training)
+summary(pml_training)
+```
+
+### Data Preparation
+
+#### Data Cleaning
+
+##### Record Id columns
+
+We are only interested in columns that can be considered predictors for our target variable so we removed the following columns:
+"user_name", "cvtd_timestamp", "X", "raw_timestamp_part_1", "raw_timestamp_part_2"
+
+```{r remove_col1, include=FALSE}
+# Exclude the following cols
+exclude_col = c("user_name", "cvtd_timestamp", "X", "raw_timestamp_part_1", "raw_timestamp_part_2")
+training_DF = pml_training[,!(names(pml_training) %in% exclude_col)]
+```
+
+##### Missing value columns
+
+There were quite a number of columns that were almost completely filled (>90%) with missing values so these were removed as well.
+
+```{r remove_col2, echo=TRUE}
+# Remove columns with lots of missing values
+training_DF = training_DF[, colSums(is.na(training_DF)) <=0.9*nrow(training_DF)]
+```
+
+##### One-Hot Encoding
+
+Categorical variables will be changed to binary integer variables using one-hot encoding.
+
+Since there is only one categorical variable, and it only has 2 factors, we will just transform one of the factors.
+
+```{r one_hot_encoding, include=TRUE}
+table(training_DF$new_window)
+training_DF$new_windowno <- ifelse(training_DF$new_window=="no", 1, 0)
+table(training_DF$new_windowno)
+training_DF$new_window = NULL
+```
+
+### Model Preparation
+
+##### Correlation
+
+```{r corr, eval=FALSE, include=TRUE}
+library(ggplot2)
+# Correlations
+#str(training_DF)
+r <- cor(training_DF[,!(names(training_DF) %in% target_var), drop = F], use="complete.obs")
+#round(r,2)
+ggcorrplot(r, hc.order = TRUE, type = "lower")
+```
+*** Output was excluded as it was too large 
+
+##### Traing, Validation, Test Sets
+
+The training data will be split so we can get a validation set
+
+```{r modelprep, echo=TRUE}
+# Split training into training and validation
+set.seed(2020)
+training_DF_random = training_DF[sample(nrow(training_DF)),]
+set.seed(2020)
+trainIndex = createDataPartition(training_DF_random$classe, p = 0.7, list = FALSE)
+training = training_DF_random[trainIndex,]; validation = training_DF_random[-trainIndex,]
+
+train.data = training[,!(names(training) %in% target_var), drop = F]
+valid.data = validation[,!(names(validation) %in% target_var), drop = F]
+
+# Check if proportion of target align with overall set
+prop.table(table(training[, target_var]))
+prop.table(table(validation[, target_var]))
+```
+
+### Model Training
+
+We will be using the caret package to train, fit and test a few models.
+
+We set the training parameters and the accuracy metric to consider for model comparison.
+
+```{r param, include=TRUE}
+control <- trainControl(method="repeatedcv", number=3, repeats=1)
+seed <- 7
+metric <- "Accuracy"
+set.seed(seed)
+```
+
+#### Boosting
+
+The first 2 model we will try are boosting alogorithms : c50 and GBM.
+
+```{r boosting, message=FALSE, warning=FALSE, cache=TRUE, include=FALSE}
+fit.c50 <- train(classe~., data=training, method="C5.0", metric=metric, trControl=control)
+training$classe = factor(training$classe)
+fit.gbm <- train(training[, !(names(training) %in% target_var), drop = FALSE], 
+                 training$classe,
+                 method="gbm",
+                 train.fraction = 0.5,
+                 trControl = control,
+                 metric=metric)
+```
+
+#### Bagging
+
+The next 2 model we will try are boosting alogorithms : c50 and GBM.
+
+```{r bagging, message=FALSE, warning=FALSE, cache=TRUE, include=FALSE, paged.print=TRUE}
+fit.treebag <- train(classe~., data=training, method="treebag", 
+                     metric=metric, trControl=control)
+
+fit.rf <- train(classe~., data=training, method="rf",
+                metric=metric, trControl=control, verbose = FALSE)
+```
+
+#### Results
+
+```{r results, echo=TRUE}
+results <- resamples(list(treebag=fit.treebag, rf=fit.rf, c50=fit.c50, gbm=fit.gbm))
+summary(results)
+dotplot(results)
+```
+
+From the above it looks like c50 had the highest accuracy.
+
+### Model Evaluation
+
+We are going to be evaluating the performance of the 4 models built above on our validation set by getting the class predictions.
+
+```{r model_eval, echo=FALSE}
+pred.rf = predict(fit.rf, validation)
+pred.c50 = predict(fit.c50, validation)
+pred.gbm = predict(fit.gbm, validation)
+pred.treebag = predict(fit.treebag, validation)
+
+valid_acc_rf = confusionMatrix(pred.rf,as.factor(validation$classe))$overall['Accuracy']
+valid_acc_gbm = confusionMatrix(pred.gbm, as.factor(validation$classe))$overall['Accuracy']
+valid_acc_c50 = confusionMatrix(pred.c50, as.factor(validation$classe))$overall['Accuracy']
+valid_acc_treebag = confusionMatrix(pred.treebag, as.factor(validation$classe))$overall['Accuracy']
+
+acc = cbind(valid_acc_rf, valid_acc_gbm, valid_acc_c50, valid_acc_treebag)
+acc
+
+```
+
+The c50 model had the highest accuracy on the validation test and it was quite close the accuracy on the training set which means it is likely not overfitting.
+
+#### Variable Importance
+
+Below is a graph showing which variables the chosen model considered significant.
+
+```{r varImp}
+c50Imp = varImp(fit.c50, scale = FALSE)
+plot(c50Imp, top = 20)
+```
+
+
+### Model Application
+
+Below we are going to apply the selected model to new data (test data). We will first have to apply the same transformations we applied to the training data.
+
+```{r pred_test}
+pml_testing$new_windowno <- ifelse(pml_testing$new_window=="no", 1, 0)
+pml_testing$new_window = NULL
+predictions = predict(fit.c50, pml_testing)
+cols = c("X", "user_name", "cvtd_timestamp")
+head(cbind(pml_testing[, (names(pml_testing) %in% cols)], predictions))
+```
