@@ -26,6 +26,8 @@ ipak(packages)
 One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it. In this project, your goal will be to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants.
 * Culled from Coursera course on Practical Machine Learning
 
+Link to GitHub: <https://github.com/ThandoNdl/datasciencecoursera/blob/master/PML%20Report.Rmd>
+
 ## Data Preparation
 
 We have been provided with data that we split into training and testing.
